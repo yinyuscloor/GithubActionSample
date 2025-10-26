@@ -5,7 +5,7 @@ set_languages("c++20")
 
 add_requires("qt6widgets")
 
-target("xmqt_pjc")
+target("stem")
     add_rules("qt.widgetapp")
     add_packages("qt6widgets")
 
