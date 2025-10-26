@@ -6,7 +6,3 @@ build/
 .DS_Store
 
 .cache/
-
-
-compile_commands.json
-xmqt_pjc.code-workspace
