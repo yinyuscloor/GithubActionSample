@@ -36,9 +36,9 @@ jobs:
         run: xmake build -vD --diagnosis stem
       - name: install
         run: xmake install -vD stem
-      - name: Generate Installer
-        run: |
-          xmake install -vD stem_packager
+      # - name: Generate Installer
+      #   run: |
+      #     xmake install -vD stem_packager
       - name: Upload 
         uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
