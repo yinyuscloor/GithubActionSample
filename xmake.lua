@@ -29,33 +29,55 @@ target("stem_packager") do
 
     after_install(function (target, opt)
         local app_dir = target:installdir() .. "/../../"
-        os.cp("$(buildir)/Info.plist", app_dir .. "/Contents")
-        os.execv("codesign", {"--force", "--deep", "--sign", "-", app_dir})
+        local info_plist_path = "$(buildir)/Info.plist"
 
-        local hdiutil_command= "/usr/bin/sudo /usr/bin/hdiutil create $(buildir)/" .. dmg_name .. " -fs HFS+ -srcfolder " .. app_dir
+        -- 复制 Info.plist 文件
+        if os.isfile(info_plist_path) then
+            os.cp(info_plist_path, app_dir .. "/Contents")
+        end
+
+        -- 代码签名（在 GitHub Actions 中通常跳过或使用环境变量）
+        local codesign_identity = os.getenv("CODESIGN_IDENTITY") or "-"
+        if codesign_identity ~= "" and codesign_identity ~= "-" then
+            os.execv("codesign", {"--force", "--deep", "--sign", codesign_identity, app_dir})
+        else
+            print("Skipping code signing (no valid identity provided)")
+        end
+
+        -- 创建 DMG 文件
+        local hdiutil_command= "/usr/bin/hdiutil create $(buildir)/" .. dmg_name .. " -fs HFS+ -srcfolder " .. app_dir .. " -volname " .. "stem"
         io.write("Execute: ")
         print(hdiutil_command)
-        print("Remove /usr/bin/sudo if you want to package it by your own")
 
-        local maxRetries= 5
+        local maxRetries= 3
         local retries = 0
-        while retries <= maxRetries do
+        local success = false
+
+        while retries < maxRetries and not success do
             try {
                 function ()
                     os.execv(hdiutil_command)
-                    os.exit(0)
+                    success = true
                 end,
                 catch {
                     function (errors)
                         retries = retries + 1
                         io.write("Retrying, attempt ")
                         print(retries)
-                        if retries > maxRetries then
-                            os.raise("Command failed after " .. maxRetries .. " retries")
+                        if retries >= maxRetries then
+                            os.raise("Command failed after " .. maxRetries .. " retries: " .. tostring(errors))
                         end
                     end
                 }
             }
+        end
+
+        -- 验证 DMG 文件是否创建成功
+        local dmg_path = "$(buildir)/" .. dmg_name
+        if os.isfile(dmg_path) then
+            print("DMG created successfully: " .. dmg_path)
+        else
+            os.raise("Failed to create DMG file: " .. dmg_path)
         end
     end)
 end
